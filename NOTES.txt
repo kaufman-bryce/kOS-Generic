@@ -1,0 +1,29 @@
+PARAMETER ORDER CHANGED ON LAUNCH SCRIPT; UPDATE CALLERS!!!
+
+Dependency manager:
+	Reads .ks files to discover dependencies; retrieves from archive if not present and runs them.
+	Identifier looks like this:
+	
+//DEPENDS{/absolute/path/to/file,/abs/path/to/2ndfile}
+
+
+Modifications to launch script
+	✔Accept target parameter (orbital or set of kepler elements)
+		✔Detect type of first parameter
+			✔If vessel or body orbiting parent, launch into plane.
+				If target is parent of current body, just launch normal.
+			✔If number, assume altitude with param 2 inclination.
+				If param 3, treat as LAN. Otherwise ignore LAN.
+			
+	✔Launch to LAN as well as inc
+		✔By default, ignores LAN.
+	✔Integrate launch window functionality
+		✔Adjust to accept target normal instead of target (permits launch to hypothetical orbits)
+		Detect when rInc is low (<1?) and skip window
+		✔Detect when waiting for window will take excessive time (tidal locked); skip, or set alarm and exit?
+	If target selected, correct plane as well?
+		Technically not part of launch, but any reason not to do this?
+	Rendevous is outside the purview of a launch program.
+
+Generic mission script
+	

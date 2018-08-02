@@ -1,0 +1,2 @@
+CLEARSCREEN.CORE:PART:GETMODULE("kOSProcessor"):DOEVENT("Open Terminal").PRINT "Loading, please wait..." AT (6,16).COPYPATH("0:/boot/station","1:/boot/station").COPYPATH("0:/station","1:/station").LOG " " TO printLabel.DELETEPATH("1:/printLabel").COPYPATH("0:/stationlabels/" + SHIP:NAME, "1:/printLabel").WAIT 2.
+RUN STATION.

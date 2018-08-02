@@ -1,0 +1,8 @@
+SHIP:MODULESNAMED("kOSProcessor")[0]:DOEVENT("Open Terminal").
+RUNPATH("0:/copy/Basic").
+COPYPATH("0:/comSat","1:/comSat").
+WAIT UNTIL STAGE:READY.
+RUNPATH("0:/launch").
+RUN comSat("kCom",3,2868740).
+DELETEPATH(SCRIPTPATH()).
+SET CORE:BOOTFILENAME TO "".
