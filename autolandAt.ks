@@ -86,8 +86,8 @@ PRINT " ".
 PRINT "   hPID:".
 PRINT "   vPID:".
 PRINT "  normE:".
-LOCAL hPID IS PIDLOOP(0.4,0.01,0.05,0,1).
-LOCAL vPID IS PIDLOOP(0.5,0.03,0.05,0,1).
+LOCAL hPID IS PIDLOOP(0.4,0.3,0.1,0,1).
+LOCAL vPID IS PIDLOOP(0.02,0.02,0.06,0,1).
 LOCAL oldTime IS 0.
 LOCAL scanTime IS 0.
 LOCAL impactAvoid IS 0.
@@ -101,33 +101,33 @@ UNTIL hDist < 60 {
 		LOCAL R IS BODY:POSITION.
 		SET hDist TO targ:ALTITUDEPOSITION(ALTITUDE):MAG.
 		LOCAL impact IS predictImpact(targ:TERRAINHEIGHT).
-		IF impact[1]:DISTANCE < targ:DISTANCE AND hDist > 500 {
-			SET impactAvoid TO MAX(impactAvoid,impact[1]:TERRAINHEIGHT - (targ:TERRAINHEIGHT + 100)).
-		}
-        LOCAL vDist IS ALTITUDE - (targ:TERRAINHEIGHT + 100 + impactAvoid).
+		IF impact[1]:DISTANCE < targ:DISTANCE AND hDist > 1000 {
+			SET impactAvoid TO MAX(impactAvoid,(impact[1]:TERRAINHEIGHT + 20) - (targ:TERRAINHEIGHT + 50)).
+		} ELSE {SET impactAvoid TO ROUND(impactAvoid * 0.95,1).}
+        LOCAL vDist IS ALTITUDE - (targ:TERRAINHEIGHT + 50 + impactAvoid).
         LOCAL srfNorm IS VCRS(SRFPROGRADE:VECTOR,UP:VECTOR):NORMALIZED.
         LOCAL hVec IS -VCRS(R,VCRS(VELOCITY:SURFACE,R)):NORMALIZED.
 		LOCAL hSpd IS VDOT(VCRS(VCRS(R,targ:POSITION),R):NORMALIZED,VELOCITY:SURFACE).
         LOCAL normEm IS VDOT(targ:POSITION,srfNorm).
         LOCAL normE IS 0.0005 * MAX(-1000,MIN(1000,normEm)).
         LOCAL dHSpd IS safeSQRT(1.5 * (MAX(1,hDist - 50)) * accel()).
-        LOCAL dVSpd IS safeSQRT(vDist * (accel() - weight() / MASS)) * 0.7.
+        LOCAL dVSpd IS -safeSQRT(vDist * (accel() - weight() / MASS)) * 0.7.
 		SET hPID:SETPOINT TO -dHSpd.
-		SET vPID:SETPOINT TO -dVSpd.
+		SET vPID:SETPOINT TO dVSpd.
         hPID:UPDATE(TIME:SECONDS,-hSpd).
 		vPID:UPDATE(TIME:SECONDS,VERTICALSPEED).
         SET totalE TO ROUND(hPID:OUTPUT + ABS(vPID:OUTPUT) + ROUND(ABS(normE),1),3).
-        SET steervec TO UP:VECTOR * MAX(0,vPID:OUTPUT) + hVec * MAX(0.05,hPID:OUTPUT) + srfNorm * normE.
+        SET steervec TO UP:VECTOR * MAX(0,vPID:OUTPUT) + hVec * MAX(0.05,hPID:OUTPUT) + srfNorm * normE * CEILING(hPID:OUTPUT).
         SET steer TO steervec:NORMALIZED.
         SET steerErr TO VANG(steervec:NORMALIZED,FACING:VECTOR).
-        SET THROT TO totalE * COS(MIN(90,steerErr)).
+        SET THROT TO totalE.
         SET SHIP:CONTROL:MAINTHROTTLE TO THROT.
         SET SHIP:CONTROL:PILOTMAINTHROTTLE TO THROT.
         PRINT ROUND(dT,2)+ spaces AT (9,0).
         PRINT ROUND(hDist,2)+ spaces AT (9,1).
         PRINT ROUND(vDist,1)+ spaces AT (9,2).
         PRINT ROUND(impactAvoid,1)+ spaces AT (9,3).
-        PRINT ROUND(MIN(0,-dVSpd - VERTICALSPEED),1)+ spaces AT (9,4).
+        PRINT ROUND(MIN(0,dVSpd - VERTICALSPEED),1)+ spaces AT (9,4).
         PRINT ROUND(normEm,2)+ spaces AT (9,5).
         PRINT ROUND(dHSpd,2)+ spaces AT (9,6).
         PRINT ROUND(hSpd,2)+ spaces AT (9,7).
@@ -136,6 +136,10 @@ UNTIL hDist < 60 {
         PRINT ROUND(hPID:OUTPUT,3)+ spaces AT (9,11).
         PRINT ROUND(vPID:OUTPUT,3)+ spaces AT (9,12).
         PRINT ROUND(normE,3)+ spaces AT (9,13).
+		LOG TIME:SECONDS + "," + hDist + "," + vDist + "," + impactAvoid + "," + dHSpd + "," + hSpd + "," + dVSpd + "," + VERTICALSPEED + "," + steerErr + "," + THROT + "," +
+		hPID:INPUT + "," + hPID:SETPOINT + "," + hPID:ERROR + "," + hPID:OUTPUT + "," + hPID:PTERM + "," + hPID:ITERM + "," + hPID:DTERM + "," + 
+		vPID:INPUT + "," + vPID:SETPOINT + "," + vPID:ERROR + "," + vPID:OUTPUT + "," + vPID:PTERM + "," + vPID:ITERM + "," + vPID:DTERM + "," + 
+		normE + "," + totalE TO "0:/LOGS/autoland_1.csv".
     }
     WAIT 0.
 }
@@ -197,3 +201,4 @@ SET SHIP:CONTROL:MAINTHROTTLE TO 0.
 SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.
 SAS ON.
 UNSET impactdraw.
+PRINT CHAR(7).
