@@ -7,8 +7,13 @@ DECLARE PARAMETER targ.
 SET minSafeAltitude TO targ:TERRAINHEIGHT+1000.
 SET spaces TO "          ".
 
-CLEARSCREEN.
+FUNCTION safeSQRT {
+	PARAMETER x.
+	IF x < 0 {RETURN SQRT(ABS(x)) * -1.}
+	ELSE {RETURN SQRT(x).}
+}
 
+CLEARSCREEN.
 SET targTime TO utOf(30).
 SET ang TO 0.
 SET err TO 0.
@@ -57,14 +62,20 @@ LOCAL t IS timeToTruAnom(OBT,270).
 LOCAL align IS nodeInc(utOf(t),err).
 ADD align.
 IF align:DELTAV:MAG > 5 {doNode().} ELSE {REMOVE align.}
-LOCK STEERING TO SRFRETROGRADE:VECTOR.
-WAIT UNTIL VANG(SRFRETROGRADE:VECTOR,SHIP:FACING:VECTOR) < 0.5.
-doWarp(utOf(ETA:PERIAPSIS - 2 * (VELOCITYAT(SHIP,ETA:PERIAPSIS):ORBIT:MAG * accel() * 0.75))).
+
+SET t TO utOf(ETA:PERIAPSIS - 1.5 * (vAT(SHIP,ETA:PERIAPSIS):MAG / accel() * 0.75)).
+SET pSpd TO vAT(SHIP,t).
+LOCK STEERING TO -pSpd.
+WAIT UNTIL VANG(-pSpd,SHIP:FACING:VECTOR) < 0.5.
+doWarp(t).
+
+//Approach phase
 SAS OFF.
 CLEARSCREEN.
 PRINT "runtime:".
 PRINT "  hDist:".
 PRINT "  vDist:".
+PRINT " impAvd:".
 PRINT " vrtErr:".
 PRINT " latErr:".
 PRINT "   dSpd:".
@@ -75,53 +86,62 @@ PRINT " ".
 PRINT "   hPID:".
 PRINT "   vPID:".
 PRINT "  normE:".
-
-SET hPID TO PIDLOOP(0.1,0.01,0.05,0,1).
-SET vPID TO PIDLOOP(0.1,0.01,0.05,0,1).
-SET oldTime TO 0.
-SET steer TO SRFRETROGRADE:VECTOR.
+LOCAL hPID IS PIDLOOP(0.4,0.01,0.05,0,1).
+LOCAL vPID IS PIDLOOP(0.5,0.03,0.05,0,1).
+LOCAL oldTime IS 0.
+LOCAL scanTime IS 0.
+LOCAL impactAvoid IS 0.
+LOCAL steer IS SRFRETROGRADE:VECTOR.
 LOCK STEERING TO steer.
-SET hDist TO targ:ALTITUDEPOSITION(ALTITUDE):MAG.
+LOCAL hDist IS targ:ALTITUDEPOSITION(ALTITUDE):MAG.
 UNTIL hDist < 60 {
     SET dT TO TIME:SECONDS - oldTime.
     SET oldTime TO TIME:SECONDS.
     IF DT > 0 {
 		LOCAL R IS BODY:POSITION.
 		SET hDist TO targ:ALTITUDEPOSITION(ALTITUDE):MAG.
-        LOCAL vDist IS ALTITUDE - targ:TERRAINHEIGHT - 100.
+		LOCAL impact IS predictImpact(targ:TERRAINHEIGHT).
+		IF impact[1]:DISTANCE < targ:DISTANCE AND hDist > 500 {
+			SET impactAvoid TO MAX(impactAvoid,impact[1]:TERRAINHEIGHT - (targ:TERRAINHEIGHT + 100)).
+		}
+        LOCAL vDist IS ALTITUDE - (targ:TERRAINHEIGHT + 100 + impactAvoid).
         LOCAL srfNorm IS VCRS(SRFPROGRADE:VECTOR,UP:VECTOR):NORMALIZED.
         LOCAL hVec IS -VCRS(R,VCRS(VELOCITY:SURFACE,R)):NORMALIZED.
-		LOCAL hSpd IS VDOT(VCRS(VCRS(R,targ:POSITION),R):NORMALIZED,VELOCITY:SURFACE).		
+		LOCAL hSpd IS VDOT(VCRS(VCRS(R,targ:POSITION),R):NORMALIZED,VELOCITY:SURFACE).
         LOCAL normEm IS VDOT(targ:POSITION,srfNorm).
-        LOCAL normE IS 0.001 * MAX(-1000,MIN(1000,normEm)).
-        LOCAL dHSpd IS SQRT(1.5 * (MAX(1,hDist - 50)) * accel()).
-        LOCAL dVSpd IS -SQRT(MAX(0,vDist * (accel() - weight()/MASS)))*0.7.
-		SET vPID:SETPOINT TO dVSpd.
+        LOCAL normE IS 0.0005 * MAX(-1000,MIN(1000,normEm)).
+        LOCAL dHSpd IS safeSQRT(1.5 * (MAX(1,hDist - 50)) * accel()).
+        LOCAL dVSpd IS safeSQRT(vDist * (accel() - weight() / MASS)) * 0.7.
 		SET hPID:SETPOINT TO -dHSpd.
-        vPID:UPDATE(TIME:SECONDS,VERTICALSPEED).
+		SET vPID:SETPOINT TO -dVSpd.
         hPID:UPDATE(TIME:SECONDS,-hSpd).
-        SET totalE TO ROUND(hPID:OUTPUT + vPID:OUTPUT + ABS(normE),3).
-        SET steervec TO UP:VECTOR * vPID:OUTPUT + hVec * (hPID:OUTPUT + 0.01) + srfNorm * normE.
+		vPID:UPDATE(TIME:SECONDS,VERTICALSPEED).
+        SET totalE TO ROUND(hPID:OUTPUT + ABS(vPID:OUTPUT) + ROUND(ABS(normE),1),3).
+        SET steervec TO UP:VECTOR * MAX(0,vPID:OUTPUT) + hVec * MAX(0.05,hPID:OUTPUT) + srfNorm * normE.
         SET steer TO steervec:NORMALIZED.
         SET steerErr TO VANG(steervec:NORMALIZED,FACING:VECTOR).
-        IF steerErr > 45 {SET THROT TO 0.} ELSE {SET THROT TO totalE.}
+        SET THROT TO totalE * COS(MIN(90,steerErr)).
         SET SHIP:CONTROL:MAINTHROTTLE TO THROT.
         SET SHIP:CONTROL:PILOTMAINTHROTTLE TO THROT.
         PRINT ROUND(dT,2)+ spaces AT (9,0).
         PRINT ROUND(hDist,2)+ spaces AT (9,1).
         PRINT ROUND(vDist,1)+ spaces AT (9,2).
-        PRINT ROUND(MIN(0,dVSpd - VERTICALSPEED),1)+ spaces AT (9,3).
-        PRINT ROUND(normEm,2)+ spaces AT (9,4).
-        PRINT ROUND(dHSpd,2)+ spaces AT (9,5).
-        PRINT ROUND(hSpd,2)+ spaces AT (9,6).
-        PRINT ROUND(steerErr,2)+ spaces AT (9,7).
-        PRINT ROUND(THROT,3)+ spaces AT (9,8).
-        PRINT ROUND(hPID:OUTPUT,3)+ spaces AT (9,10).
-        PRINT ROUND(vPID:OUTPUT,3)+ spaces AT (9,11).
-        PRINT ROUND(normE,3)+ spaces AT (9,12).
+        PRINT ROUND(impactAvoid,1)+ spaces AT (9,3).
+        PRINT ROUND(MIN(0,-dVSpd - VERTICALSPEED),1)+ spaces AT (9,4).
+        PRINT ROUND(normEm,2)+ spaces AT (9,5).
+        PRINT ROUND(dHSpd,2)+ spaces AT (9,6).
+        PRINT ROUND(hSpd,2)+ spaces AT (9,7).
+        PRINT ROUND(steerErr,2)+ spaces AT (9,8).
+        PRINT ROUND(THROT,3)+ spaces AT (9,9).
+        PRINT ROUND(hPID:OUTPUT,3)+ spaces AT (9,11).
+        PRINT ROUND(vPID:OUTPUT,3)+ spaces AT (9,12).
+        PRINT ROUND(normE,3)+ spaces AT (9,13).
     }
     WAIT 0.
 }
+
+
+//Landing phase
 LIST PARTS IN partlist.
 SET gearheight TO 0.
 FOR part IN partlist{
@@ -129,7 +149,7 @@ FOR part IN partlist{
     SET gearheight TO MIN(gearheight,partY - 3).
 }
 GEAR ON. SAS OFF.
-SET tPID TO PIDLOOP(0.1,0.01,0.05,0,1).
+SET tPID TO PIDLOOP(0.8,0.05,0.05,0,1).
 CLEARSCREEN.
 PRINT "runtime:".
 PRINT "  Speed:".
@@ -147,13 +167,13 @@ UNTIL STATUS = "LANDED" {
     SET oldTime TO time:seconds.
     IF DT > 0 {
         LOCAL impact IS predictImpact(targ:TERRAINHEIGHT).
-		LOCAL vDist IS ALTITUDE - targ:TERRAINHEIGHT - gearheight - 5.
-		LOCAL dVS IS -MAX(2,SQRT(MAX(0,vDist * (accel() - weight()/MASS)))*0.7).
+		LOCAL vDist IS ALTITUDE - (targ:TERRAINHEIGHT + gearheight + 10).
+		LOCAL dVS IS -MAX(2,safeSQRT(MAX(0,vDist * (accel() - weight()/MASS))) * 0.7).
         SET errDir TO (targ:POSITION - impact[1]:POSITION).
-        SET throt TO ROUND(errDir:MAG,2)* 0.002 * MAX(10,SQRT(MAX(0,ALTITUDE - targ:TERRAINHEIGHT))).
+        SET throt TO ROUND(errDir:MAG,2)* 0.002 * MAX(10,safeSQRT(MAX(0,ALTITUDE - targ:TERRAINHEIGHT))).
 		SET tPID:SETPOINT TO dVS.
         tPID:UPDATE(TIME:SECONDS,VERTICALSPEED).
-		SET steervec TO (UP:VECTOR * MIN(0.1,tPID:OUTPUT)) + (errDir:NORMALIZED * MIN(1,throt)).
+		SET steervec TO (UP:VECTOR * MAX(0.2,tPID:OUTPUT)) + (errDir:NORMALIZED * MIN(1,throt)).
 		SET steer TO steervec:NORMALIZED.
 		SET steerErr TO VANG(steervec:NORMALIZED,FACING:VECTOR).
         IF steerErr > 45 {SET THROT TO 0.}
