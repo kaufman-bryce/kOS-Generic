@@ -1,0 +1,7 @@
+{
+  "archive": "..",
+  "linting": {
+    "symbol-shadowing": "hint",
+    "symbol-unused-locally": "info"
+  }
+}

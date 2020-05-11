@@ -11,16 +11,16 @@ CLEARSCREEN.
 FUNCTION descentHold {RETURN weight()/AVAILABLETHRUST.}
 FUNCTION radar {RETURN (SHIP:POSITION - SHIP:GEOPOSITION:POSITION):MAG.}
 FUNCTION vsLim {
-    LOCAL modifier IS 0.015*GROUNDSPEED/accel().
-    RETURN -MAX(1,(1-modifier)*0.5*radar()^0.7).
+	LOCAL modifier IS 0.015*GROUNDSPEED/accel().
+	RETURN -MAX(1,(1-modifier)*0.5*radar()^0.7).
 }
 
 LOCAL ipu IS CONFIG:IPU.
 IF ipu<400 {SET CONFIG:IPU TO 400.}
 
 IF PERIAPSIS > 10000 {
-    ADD nodeMoveApsis(utOf(180),5000).
-    doNode(NEXTNODE).
+	ADD nodeMoveApsis(utOf(180),5000).
+	doNode(NEXTNODE).
 }
 
 LOCAL periTime IS utOf(ETA:PERIAPSIS).
@@ -44,16 +44,16 @@ LOCAL hsErr IS 0.
 LOCK THROTTLE TO descentHold() - vsErr + hsErr.
 //WAIT UNTIL GROUNDSPEED <= vsLim().
 UNTIL STATUS = "LANDED" {
-    stagecheck().
-    SET vsErr TO min(descentHold()*0.8,VERTICALSPEED-vsLim())/10.
-    SET hsErr TO ROUND(max(0,(GROUNDSPEED+vsLim())/50),2).
-    SET steer TO LOOKDIRUP(SRFRETROGRADE:VECTOR + (UP:VECTOR * -MIN(0,vsErr)),SRFRETROGRADE:UPVECTOR).
-    PRINT ROUND(vsLim(),2)      +"     " AT (15,3).
-    PRINT ROUND(descentHold(),2)+"     " AT (15,4).
-    PRINT ROUND(vsErr,2)        +"     " AT (15,5).
-    PRINT hsErr                 +"     " AT (15,6).
-    PRINT ROUND(0.015*GROUNDSPEED/accel(),2)+"     " AT (15,7).
-    WAIT 0.
+	stageCheck().
+	SET vsErr TO min(descentHold()*0.8,VERTICALSPEED-vsLim())/10.
+	SET hsErr TO ROUND(max(0,(GROUNDSPEED+vsLim())/50),2).
+	SET steer TO LOOKDIRUP(SRFRETROGRADE:VECTOR + (UP:VECTOR * -MIN(0,vsErr)),SRFRETROGRADE:UPVECTOR).
+	PRINT ROUND(vsLim(),2)       + "     " AT (15,3).
+	PRINT ROUND(descentHold(),2) + "     " AT (15,4).
+	PRINT ROUND(vsErr,2)         + "     " AT (15,5).
+	PRINT hsErr                  + "     " AT (15,6).
+	PRINT ROUND(0.015*GROUNDSPEED/accel(),2)+"     " AT (15,7).
+	WAIT 0.
 }
 UNLOCK THROTTLE.
 UNLOCK STEERING.

@@ -1,4 +1,6 @@
-//DEPENDS{/lib/rocket,/lib/node_basic,/lib/node_rdvs,/lib/node_xfer,/lib/orientation
+// #include "0:/lib/rocket"
+// #include "0:/lib/node_basic"
+// #include "0:/lib/orientation"
 RUNONCEPATH("/lib/rocket").
 RUNONCEPATH("/lib/node_basic").
 RUNONCEPATH("/lib/orientation").

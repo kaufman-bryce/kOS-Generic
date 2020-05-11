@@ -1,6 +1,6 @@
 #User ignores
-/OLD/
 /LOGS/
+/Reference/
 
 # Windows image file caches
 Thumbs.db

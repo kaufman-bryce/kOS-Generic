@@ -1,29 +1,94 @@
-PARAMETER ORDER CHANGED ON LAUNCH SCRIPT; UPDATE CALLERS!!!
+Make new scripts:
+	Dependency / package manager:
+		Reads .ks files to discover dependencies; retrieves from archive if not present and runs them.
+		Detects include directive from language server
+			Or, since it has to scan multiple lines anyway, just detect the runoncepaths?
+	Generic mission script
+	Paramater/menu/GUI based node builder using node libraries
 
-Dependency manager:
-	Reads .ks files to discover dependencies; retrieves from archive if not present and runs them.
-	Identifier looks like this:
-	
-//DEPENDS{/absolute/path/to/file,/abs/path/to/2ndfile}
+Finish converting ancient scripts:
+	Aircraft autopilots
+	Rover autopilots
 
+Create external batch files:
+	File minimizer
+		Use regex from kOS library on GitHub to strip whitespace and comments
+			Modify to preserve include directives
+		Variable renamer? Identify variable/function names and convert to smaller symbols
 
-Modifications to launch script
-	✔Accept target parameter (orbital or set of kepler elements)
-		✔Detect type of first parameter
-			✔If vessel or body orbiting parent, launch into plane.
-				If target is parent of current body, just launch normal.
-			✔If number, assume altitude with param 2 inclination.
-				If param 3, treat as LAN. Otherwise ignore LAN.
-			
-	✔Launch to LAN as well as inc
-		✔By default, ignores LAN.
-	✔Integrate launch window functionality
-		✔Adjust to accept target normal instead of target (permits launch to hypothetical orbits)
+Modifications to ./launch.ks
+	✅Accept target parameter (orbital or set of kepler elements)
+		✅Detect type of first parameter
+			✅If vessel or body orbiting parent, launch into plane.
+				? If target is parent of current body, just launch normally.
+			✅If number, assume altitude with param 2 inclination.
+				✅If param 3, treat as LAN. Otherwise ignore LAN.
+	✅Launch to LAN as well as inc
+		✅By default, ignores LAN.
+	✅Integrate launch window functionality
+		✅Adjust to accept target normal instead of target (permits launch to hypothetical orbits)
 		Detect when rInc is low (<1?) and skip window
-		✔Detect when waiting for window will take excessive time (tidal locked); skip, or set alarm and exit?
+		✅Detect when waiting for window will take excessive time (tidal locked); skip, or set alarm and exit?
 	If target selected, correct plane as well?
 		Technically not part of launch, but any reason not to do this?
-	Rendevous is outside the purview of a launch program.
+			Rendevous is outside the purview of a launch program.
+	✅Change line 90: Round AP to 1 place
+	✅Changge 91-92 to use ° instead of word degrees
+	Old note: Detect and trigger LES jettison?
 
-Generic mission script
-	
+latest KOS lets you PLAN HYPOTHETICAL ORBITS, FINALLY.
+	✅Ensure ./lib/node_rdvs.ks is compatible with virtual orbits
+	Alter ./rdvs.ks to accept virtual orbits
+		Some sort of switch for syncing mean anomolies or not.
+	✅Alter ./launch.ks to accept orbits as targets.
+		No changes needed, already compatible.
+
+Modifications to ./autolandAt.ks
+	✅Alter code to use BOUNDS (https://ksp-kos.github.io/KOS/structures/vessels/bounds.html)
+	❌Get bounds when scanning, get it again after deploying landing gear.
+		-- Cycled gear at start of script instead; cannot risk bounds delaying landing phase
+	✅Automatic light control based on solar obstruction
+	Re-write landing phase to use a PID for impact position retargetting
+		Lateral steering handled same as approach phase.
+
+// #include <file path> in all lib files please
+
+Modifications to ./autodock.ks
+	✅ Reference port:NODEPOSITION instead of part position
+	✅ Offset target by ACQUIRERANGE
+	✅ Disengage guidance once STATE is PreAttached.
+	Reduce thruster spam and further increase effeciency:
+	✅ Calculate accel of RCS? Use in setting speed limits.
+		Instead of directly following speed limit, take orbit into account
+			Initial vel of speedlimit, directed so that positionat(dist/speedlimit)
+				is at target.
+				Github Issue Feature Request: PositionAt/velocityAt for hypothetical orbits
+	Use BOUNDS to determine clearance distances
+	✅Test with heavier/low thrust vehicle
+
+Modifications to lib/node_rdvs.ks
+	Refactor nodeIntercept to calculate orbital period of transfer orbit
+		Should be (sMA now + sMA target) / 2, confirm
+		Use this value to predict needed phasing orbits to accelerate search loop
+	Implement "getCloser" function based on final approach from ./rdvs.ks
+
+Modifications to ./comSat.ks
+	Add actions to deploy stock relay antennae, but preserve RT compatibility
+	Add keywords to target altitude to auto-calculate synchronous, semi-synchronous, other usefull shortcuts
+		Will need to check against BODY:SOIRADIUS.
+			Fallbacks?
+
+Modifications to ./station.ks
+	Refactor resource tracker to use lexicons
+	Modify sun tracker to use stock rotors or IR rotors.
+
+Old notes:
+
+Runway touchdown point, east:
+LATLNG(-0.0486, -74.719)
+west:
+LATLNG(-0.05017, -74.498)
+
+
+Balance engine torque:
+http://pastebin.com/UAAd5pRD
