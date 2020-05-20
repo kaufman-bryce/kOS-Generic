@@ -1,3 +1,9 @@
+# Vendored paths
+batch/fnr.exe linguist-vendored
+
+# linguist ignores
+*.bat linguist-detectable=false
+
 # Auto detect text files and perform LF normalization
 * text=auto
 

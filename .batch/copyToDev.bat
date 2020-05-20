@@ -1,1 +1,2 @@
 .batch\kOS-Generic.ffs_batch
+.batch\fnr.exe --cl --dir "D:\KSP\KSP_1.8.1_KOS\Ships\Script" --fileMask "*.ks" --excludeFileMask "*.dll, *.exe" --includeSubDirectories --useRegEx --find "/(""[^""]*"")|(\/\/ #.*)| *?\/\/.*|^( |\t)*|( |\t)*$|( |\t)*([/*\-+=^{}(),<>:]|\. ?)( |\t)*|(?<= |\t)( |\t)+/gm" --replace "$1$2$6"
