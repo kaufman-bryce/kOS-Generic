@@ -78,6 +78,9 @@ Modifications to ./comSat.ks
 		Will need to check against BODY:SOIRADIUS.
 			Fallbacks?
 
+Modifications to ./autolandAt.ks
+	Increase lateral error correction; add exponent?
+
 Modifications to ./station.ks
 	Refactor resource tracker to use lexicons
 	Modify sun tracker to use stock rotors or IR rotors.
