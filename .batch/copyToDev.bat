@@ -1,5 +1,5 @@
 .batch\kOS-Generic.ffs_batch
-
+timeout /t 1 /nobreak
 :: Regex explaination
 :::::::::::::::::::::::
 :: ($1 first block ensures string literals are not touched in any way.) |
@@ -13,4 +13,4 @@
 ::     to collapse alignments that aren't attached to operators
 :: Remember to replace with $1$2$6 or it will remove strings, comment-directives and operators
 :: Designed to minify kOS scripts. kOS does not permit escaped quotes, so no considerations are made to account for them. If needed, modify the first capture group.
-.batch\fnr.exe --cl --dir "D:\KSP\KSP_1.8.1_KOS\Ships\Script" --fileMask "*.ks" --excludeFileMask "*.dll, *.exe" --includeSubDirectories --useRegEx --find "/(""[^""]*"")|(\/\/ #.*)| *?\/\/.*|^( |\t)*|( |\t)*$|( |\t)*([/*\-+=^<>{}()\[\],:]|\. ?)( |\t)*|(?<= |\t)( |\t)+/gm" --replace "$1$2$6"
+.batch\fnr.exe --cl --dir "D:\KSP\KSP_1.9.1_KOS\Ships\Script" --fileMask "*.ks" --excludeFileMask "*.dll, *.exe" --includeSubDirectories --useRegEx --find "/(""[^""]*"")|(\/\/ #.*)| *?\/\/.*|^( |\t)*|( |\t)*$|( |\t)*([/*\-+=^<>{}()\[\],:]|\. ?)( |\t)*|(?<= |\t)( |\t)+/gm" --replace "$1$2$6"
