@@ -25,7 +25,6 @@ PRINT "AG 6/7 TO change setpoint multiplier.".
 PRINT "AG 5 TO set target TO current speed.".
 PRINT "AG 1 TO exit.".
 
-LOCAL T IS SHIP:CONTROL:PILOTMAINTHROTTLE.
 LOCAL oldTime IS TIME:seconds.
 UNTIL (exit) {
 	if mult < 0.1 {set mult TO 0.1.}.
