@@ -14,7 +14,7 @@ else if kind = "coords" {
 }
 else IF kind = "route" {
 	SWITCH TO 0.
-	RUN routePlanner.
+	RUNONCEPATH("/lib/routePlanner").
 	SWITCH TO 1.
 	LOCAL route IS planRoute(dAlt, speed).
 	IF STATUS = "LANDED" OR STATUS = "PRELAUNCH" {
