@@ -1,12 +1,12 @@
 LOCAL dAlt IS floor(ALT:RADAR)-10.
 LOCAL vsMax IS 150.
-LOCAL tPID IS PIDLOOP(0.06,0.01,0.005,1,0).
+LOCAL tPID IS PIDLOOP(0.4,0.1,0.005,0,1).
 LOCAL mult IS 10.
 LOCAL radar IS TRUE.
 LOCAL exit IS FALSE.
 LOCAL oldTime IS TIME:SECONDS.
 
-ON AG1 {SET exit TO TRUE.}
+ON AG1 { SET exit TO TRUE. }
 ON AG4 {
 	IF radar = FALSE {
 		SET dAlt TO FLOOR(dAlt-(ALTITUDE-ALT:RADAR)).
@@ -45,17 +45,23 @@ UNTIL (exit) {
 	SET dT TO time:seconds - oldTime.
 	SET oldTime TO time:seconds.
 	
-	IF DT > 0 {
+	IF dT > 0 {
 		if radar {SET vAlt TO ALT:RADAR.} else {SET vAlt TO ALTITUDE.}
-		//pid_dOverride(tPID,VERTICALSPEED).
-		LOCAL altErr IS (dAlt - vAlt)/10.
-		SET altErr TO max(-vsMax,min(vsMax,altErr)).
-		SET SHIP:CONTROL:PILOTMAINTHROTTLE TO tPID:UPDATE(TIME:SECONDS, altErr-VERTICALSPEED).
-		PRINT round(vAlt,1) + " m      " AT (10,1).
-		PRINT dAlt + " m      " AT (10,2).
-		PRINT mult + "      " AT (10,3).
-		PRINT round(radar,2) + " " AT (10,4).
-		PRINT round(altErr-VERTICALSPEED,2) + "      " AT (10,20).
+		LOCAL dVS IS (dAlt - vAlt)/10.
+		SET dVS TO max(-vsMax,min(vsMax,dVS)).
+		SET tPID:setpoint TO dVS.
+		SET SHIP:CONTROL:PILOTMAINTHROTTLE TO tPID:UPDATE(TIME:SECONDS, VERTICALSPEED).
+		// PRINT round(VERTICALSPEED,1)                 + " m      " AT (10,1).
+		// PRINT dVS                          + " m      " AT (10,2).
+		PRINT round(vAlt,1)                 + " m      " AT (10,1).
+		PRINT dAlt                          + " m      " AT (10,2).
+		PRINT mult                          + "      "   AT (10,3).
+		PRINT radar                         + " "        AT (10,4).
+		PRINT round(dVS-VERTICALSPEED,2)    + "      "   AT (10,20).
+		PRINT round(tPID:pterm,2)           + "      "   AT (10,21).
+		PRINT round(tPID:dterm,2)           + "      "   AT (10,22).
+		PRINT round(tPID:errorsum,2)        + "      "   AT (10,23).
 	}
+	wait 0.
 }
 CLEARSCREEN.
