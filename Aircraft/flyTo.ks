@@ -1,4 +1,7 @@
-declare parameter kind, p1, dAlt, speed.
+declare parameter kind.
+PARAMETER p1 is 0.
+PARAMETER dAlt is 0.
+PARAMETER speed is 0.
 
 
 if kind = "waypoint" {

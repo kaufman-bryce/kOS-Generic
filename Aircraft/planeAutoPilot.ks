@@ -5,7 +5,6 @@ declare parameter points.
 //TODO: Experiment with using chained waypoints to takeoff/land on runway.
 
 LOCAL iter IS points:ITERATOR.
-iter:RESET().
 LOCAL sp IS "        ".
 // LOCAL thisAtmo IS SHIP:BODY:ATM.
 LOCAL minq IS 10000.
@@ -33,10 +32,10 @@ LOCAL rollAdjust IS 1.
 // LOCAL pPID IS pid_new(0.02,0.001,0.005).
 // LOCAL rPID IS pid_new(0.02,0,-0.01).
 // LOCAL tPID IS pid_new(0.06,0.01,0.01).
-LOCAL pPID IS PIDLOOP(0,0,0.005).
-LOCAL vsPID IS PIDLOOP(0.02,0.001,0).
-LOCAL rPID IS PIDLOOP(0.02,0,-0.01).
-LOCAL tPID IS PIDLOOP(0.06,0.01,0.01,0,1).
+LOCAL pPID IS PIDLOOP(0, 0, 0.05, -1, 1).
+LOCAL vsPID IS PIDLOOP(0.02, 0.01, 0, -1, 1).
+LOCAL rPID IS PIDLOOP(0.02, 0, 0.1, -1, 1).
+LOCAL tPID IS PIDLOOP(0.04, 0.01, 0.3, 0, 1).
 LOCAL exit IS FALSE.
 LOCAL PAUSE IS TRUE.
 LOCAL altSmooth IS ALTITUDE.
@@ -56,7 +55,7 @@ UNTIL (exit) {
 	IF dT > 0 {
         LOCAL bear IS dest:bearing.
         SET dist TO dest:ALTITUDEPOSITION(ALTITUDE):MAG.
-        LOCAL currentRoll IS  VANG( SHIP:FACING:STARVECTOR, SHIP:UP:VECTOR ) - 90.
+        LOCAL currentRoll IS VANG( SHIP:FACING:STARVECTOR, SHIP:UP:VECTOR ) - 90.
         LOCAL currentPitch IS 90 - VANG(SHIP:UP:VECTOR, SHIP:FACING:FOREVECTOR).
         
 		//TODO: Go steal Q formula from FAR/NEAR source, and/or nick it's DCA directly.
@@ -91,7 +90,7 @@ UNTIL (exit) {
 
             //I gets full control range
             // SET SHIP:CONTROL:PITCH TO pid(pPID,vsErr-VERTICALSPEED) * pitchMax + pPID[3] * (1-pitchMax). 
-            SET SHIP:CONTROL:PITCH TO (vsOut + pOut) * pitchMax + vsPID:errorsum * (1 - pitchMax). 
+            SET SHIP:CONTROL:PITCH TO (vsOut + pOut) * pitchMax + vsPID:iterm * (1 - pitchMax). 
             IF STATUS = "PRELAUNCH" OR STATUS = "LANDED" {
                 SET SHIP:CONTROL:YAW TO rPID:update(TIME:seconds,bearErr2) * 3.
                 SET SHIP:CONTROL:ROLL TO 0.
@@ -127,6 +126,7 @@ UNTIL (exit) {
 		PRINT ROUND(ctrlMul,2)  + sp AT (16,7).
 		PRINT ROUND(Q)          + sp AT (16,8).
 		PRINT ROUND(dT,2)       + sp AT (16,9).
+		
         SET destArrow TO VECDRAWARGS(v(0,0,0),dest:ALTITUDEPOSITION(dAlt),CYAN,text, 1, TRUE).
 	}
 	wait 0.
