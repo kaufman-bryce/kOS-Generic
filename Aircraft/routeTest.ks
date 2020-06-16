@@ -1,2 +1,2 @@
 RUNONCEPATH("/lib/routePlanner").
-RUN showRoute(planRoute(12000,500)).
+RUNPATH("/Aircraft/showRoute",planRoute(12000,500)).
