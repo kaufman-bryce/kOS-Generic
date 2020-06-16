@@ -1,5 +1,4 @@
-declare parameter kind is "none".
-declare parameter p1, dAlt, speed.
+declare parameter kind, p1, dAlt, speed.
 
 
 if kind = "waypoint" {
@@ -36,5 +35,15 @@ else if kind:tolower = "ksc"{
 		list(latlng(-0.0486, -74.719), 90  , 70   , "Runway"),
 		list(latlng(-0.0494, -74.608), 60  , 0    , "Land")
 	)).
+}
+else if kind = "takeoff" {
+	IF STATUS = "LANDED" OR STATUS = "PRELAUNCH" {
+		LOCAL route IS list().
+		// TODO: Reconfigure to dynamically create waypoints based on current position
+		//     This will permit takeoff from any location.
+		route:INSERT(0, list(latlng(0, -74), 1200, 200, "Initial Climb")).
+		route:INSERT(0, list(latlng(-0.05017, -74.498), 250, 150, "Takeoff")).
+		RUN planeAutoPilot(route).
+	}
 }
 // TODO: Add island and desert runways
