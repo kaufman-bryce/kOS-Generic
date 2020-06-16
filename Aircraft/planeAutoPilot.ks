@@ -7,8 +7,8 @@ declare parameter points.
 LOCAL iter IS points:ITERATOR.
 LOCAL sp IS "        ".
 // LOCAL thisAtmo IS SHIP:BODY:ATM.
-LOCAL minq IS 10000.
-LOCAL maxq IS 200000.
+LOCAL minq IS 10.
+LOCAL maxq IS 40.
 LOCAL bearmax IS 70. //Maximum roll angle
 
 CLEARSCREEN.
@@ -32,9 +32,9 @@ LOCAL rollAdjust IS 1.
 // LOCAL pPID IS pid_new(0.02,0.001,0.005).
 // LOCAL rPID IS pid_new(0.02,0,-0.01).
 // LOCAL tPID IS pid_new(0.06,0.01,0.01).
-LOCAL pPID IS PIDLOOP(0, 0, 0.05, -1, 1).
+LOCAL pPID IS PIDLOOP(0, 0, 0.01, -1, 1).
 LOCAL vsPID IS PIDLOOP(0.02, 0.01, 0, -1, 1).
-LOCAL rPID IS PIDLOOP(0.02, 0, 0.1, -1, 1).
+LOCAL rPID IS PIDLOOP(0.02, 0, 0.01, -1, 1).
 LOCAL tPID IS PIDLOOP(0.04, 0.01, 0.3, 0, 1).
 LOCAL exit IS FALSE.
 LOCAL PAUSE IS TRUE.
@@ -60,7 +60,7 @@ UNTIL (exit) {
         
 		//TODO: Go steal Q formula from FAR/NEAR source, and/or nick it's DCA directly.
         // LOCAL Q IS 0.5*((thisAtmo:SEALEVELPRESSURE + (CONSTANT():E^(-ALTITUDE/thisAtmo:SCALE)))*1.2230948554874)*(AIRSPEED^2).
-        LOCAL Q IS SHIP:Q.
+        LOCAL Q IS SHIP:Q * constant:ATMtokPa.
 		LOCAL qMul IS 1-MIN(1,MAX(0,Q-minq)/(maxq-minq)).
 		LOCAL ctrlMul IS 0.9*qMul+0.1.
 		LOCAL rollMax IS 0.5*ctrlMul.
