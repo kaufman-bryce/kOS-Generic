@@ -3,12 +3,11 @@ declare parameter points.
 //TODO: Setup an action group to automatically deploy science when waypoint reached
 //TODO: Detect if landed; disable roll control and use yaw instead.
 //TODO: Experiment with using chained waypoints to takeoff/land on runway.
-run lib_PID.
 
 LOCAL iter IS points:ITERATOR.
 iter:RESET().
 LOCAL sp IS "        ".
-LOCAL thisAtmo IS SHIP:BODY:ATM.
+// LOCAL thisAtmo IS SHIP:BODY:ATM.
 LOCAL minq IS 10000.
 LOCAL maxq IS 200000.
 LOCAL bearmax IS 70. //Maximum roll angle
@@ -29,12 +28,15 @@ PRINT "AG 2 to toggle autopilot.".
 PRINT "AG 3 to skip waypoint.".
 
 
-LOCAL oldTime IS MISSIONTIME.
+LOCAL oldTime IS TIME:seconds.
 LOCAL rollAdjust IS 1.
-LOCAL pPID IS pid_new(0.02,0.001,0.005).
-LOCAL rPID IS pid_new(0.02,0,-0.01).
-LOCAL tPID IS pid_new(0.06,0.01,0.01).
-pid_limits(tPID,0,1,0,1).
+// LOCAL pPID IS pid_new(0.02,0.001,0.005).
+// LOCAL rPID IS pid_new(0.02,0,-0.01).
+// LOCAL tPID IS pid_new(0.06,0.01,0.01).
+LOCAL pPID IS PIDLOOP(0,0,0.005).
+LOCAL vsPID IS PIDLOOP(0.02,0.001,0).
+LOCAL rPID IS PIDLOOP(0.02,0,-0.01).
+LOCAL tPID IS PIDLOOP(0.06,0.01,0.01,0,1).
 LOCAL exit IS FALSE.
 LOCAL PAUSE IS TRUE.
 LOCAL altSmooth IS ALTITUDE.
@@ -45,11 +47,11 @@ IF NOT iter:NEXT {SET EXIT TO TRUE.}
 UNTIL (exit) {
     LOCAL args IS iter:VALUE.
     LOCAL dest IS args[0].
-    LOCAL alt IS args[1].
+    LOCAL dAlt IS args[1].
     LOCAL speed IS args[2].
     LOCAL text IS args[3].
-	LOCAL dT IS MISSIONTIME - oldTime.
-	SET oldTime TO MISSIONTIME.
+	LOCAL dT IS TIME:seconds - oldTime.
+	SET oldTime TO TIME:seconds.
     LOCAL dist IS 1000.
 	IF dT > 0 {
         LOCAL bear IS dest:bearing.
@@ -58,16 +60,17 @@ UNTIL (exit) {
         LOCAL currentPitch IS 90 - VANG(SHIP:UP:VECTOR, SHIP:FACING:FOREVECTOR).
         
 		//TODO: Go steal Q formula from FAR/NEAR source, and/or nick it's DCA directly.
-        LOCAL Q IS 0.5*((thisAtmo:SEALEVELPRESSURE + (CONSTANT():E^(-ALTITUDE/thisAtmo:SCALE)))*1.2230948554874)*(AIRSPEED^2).
+        // LOCAL Q IS 0.5*((thisAtmo:SEALEVELPRESSURE + (CONSTANT():E^(-ALTITUDE/thisAtmo:SCALE)))*1.2230948554874)*(AIRSPEED^2).
+        LOCAL Q IS SHIP:Q.
 		LOCAL qMul IS 1-MIN(1,MAX(0,Q-minq)/(maxq-minq)).
 		LOCAL ctrlMul IS 0.9*qMul+0.1.
 		LOCAL rollMax IS 0.5*ctrlMul.
 		LOCAL pitchMax IS 0.8*ctrlMul.
         
-        SET altSmooth TO altSmooth + (alt - altSmooth)/(5/dT). //Setpoint smoothing
+        SET altSmooth TO altSmooth + (dAlt - altSmooth)/(5/dT). //Setpoint smoothing
 		LOCAL vsMax IS AIRSPEED/4.
 		LOCAL vsErr IS (altSmooth - ALTITUDE)/5.
-		LOCAL vsErr IS max(-vsMax,min(vsMax,vsErr)).
+		SET vsErr TO max(-vsMax,min(vsMax,vsErr)).
 		
 		LOCAL bearErr IS bear*3.
         if warp <> 0 or bear < 5 {
@@ -76,14 +79,21 @@ UNTIL (exit) {
         } ELSE {SET rollAdjust TO 1.}
         LOCAL bearErr2 IS max(-bearmax,min(bearmax,bearErr*rollAdjust)).
         
-        pid_dOverride(pPID,currentPitch).
-        pid_dOverride(rPID,currentRoll).
+        // pid_dOverride(pPID,currentPitch).
+        // pid_dOverride(rPID,currentRoll).
         IF pause = FALSE {
             IF ALT:RADAR < 100 {GEAR ON.} ELSE {GEAR OFF.}
+            
+            SET vsPID:setpoint TO vsErr.
+            
+            LOCAL vsOut IS vsPID:update(TIME:seconds,VERTICALSPEED).
+            LOCAL pOut IS pPID:update(TIME:seconds,currentPitch).
+
             //I gets full control range
-            SET SHIP:CONTROL:PITCH TO pid(pPID,vsErr-VERTICALSPEED) * pitchMax + pPID[3] * (1-pitchMax). 
+            // SET SHIP:CONTROL:PITCH TO pid(pPID,vsErr-VERTICALSPEED) * pitchMax + pPID[3] * (1-pitchMax). 
+            SET SHIP:CONTROL:PITCH TO (vsOut + pOut) * pitchMax + vsPID:errorsum * (1 - pitchMax). 
             IF STATUS = "PRELAUNCH" OR STATUS = "LANDED" {
-                SET SHIP:CONTROL:YAW TO pid(rPID,bearErr2)*3.
+                SET SHIP:CONTROL:YAW TO rPID:update(TIME:seconds,bearErr2) * 3.
                 SET SHIP:CONTROL:ROLL TO 0.
                 IF speed = 0 {
                     BRAKES ON.
@@ -91,10 +101,11 @@ UNTIL (exit) {
                 } ELSE {BRAKES OFF.}
             } ELSE {
                 SET SHIP:CONTROL:YAW TO 0.
-                SET SHIP:CONTROL:ROLL TO pid(rPID,round(bearErr2,1) - currentRoll) * rollMax.
+                SET rPID:setpoint TO round(bearErr2,1).
+                SET SHIP:CONTROL:ROLL TO rPID:update(TIME:seconds,currentRoll) * rollMax.
             }
-            SET T TO round(pid(tPID,speed - AIRSPEED),2).
-            SET ship:control:MAINTHROTTLE TO T.
+            SET tPID:setpoint TO speed.
+            SET T TO round(tPID:update(TIME:seconds,AIRSPEED),2).
             SET ship:control:PILOTMAINTHROTTLE TO T.
             PRINT "===AUTOPILOT ENGAGED===   " AT (2,0).
         } ELSE {
@@ -108,20 +119,20 @@ UNTIL (exit) {
         LOCAL sec IS dist / AIRSPEED.
         LOCAL mins IS sec/60.
         LOCAL hours IS mins/60.
-        LOCAL eta IS FLOOR(hours)+"h"+FLOOR(MOD(mins,60))+"m"+FLOOR(MOD(sec,60))+"s".
-        PRINT eta + sp AT (16,3).
+        LOCAL timeToDest IS FLOOR(hours)+"h"+FLOOR(MOD(mins,60))+"m"+FLOOR(MOD(sec,60))+"s".
+        PRINT timeToDest + sp AT (16,3).
 		PRINT FLOOR(dist)       + sp AT (16,4).
 		PRINT ROUND(bear,2)     + sp AT (16,5).
         PRINT ROUND(ALTITUDE)   + sp AT (16,6).
 		PRINT ROUND(ctrlMul,2)  + sp AT (16,7).
 		PRINT ROUND(Q)          + sp AT (16,8).
 		PRINT ROUND(dT,2)       + sp AT (16,9).
-        SET draw TO VECDRAWARGS(v(0,0,0),dest:ALTITUDEPOSITION(alt),CYAN,text, 1, TRUE).
+        SET destArrow TO VECDRAWARGS(v(0,0,0),dest:ALTITUDEPOSITION(dAlt),CYAN,text, 1, TRUE).
 	}
 	wait 0.
 	if dist < 200 {IF NOT ITER:NEXT {exit ON.}}
 }
 SET ship:control:NEUTRALIZE TO TRUE.
 SET SAS TO TRUE.
-UNSET draw.
+UNSET destArrow.
 clearscreen.
