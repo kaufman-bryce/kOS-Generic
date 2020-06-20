@@ -37,7 +37,7 @@ FUNCTION throtFrac {
 	RETURN safeSQRT(MAX(0,val * (accel() * frac))) / accel().
 }
 
-CORE:PART:GETMODULE("kOSProcessor"):DOEVENT("Open Terminal").
+CORE:DOEVENT("Open Terminal").
 CLEARSCREEN.
 PRINT "Preparing to land on " + BODY:name + " at (" + ROUND(targ:LAT,2) + "," + ROUND(targ:LNG,2) + ")...".
 SET SHIP:CONTROL:MAINTHROTTLE TO 0.

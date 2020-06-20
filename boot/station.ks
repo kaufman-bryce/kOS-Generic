@@ -1,5 +1,5 @@
 CLEARSCREEN.
-CORE:PART:GETMODULE("kOSProcessor"):DOEVENT("Open Terminal").
+CORE:DOEVENT("Open Terminal").
 PRINT "Loading, please wait..." AT (6,16).
 COPYPATH("0:/boot/station","1:/boot/station").
 COPYPATH("0:/station","1:/station").

@@ -1,4 +1,4 @@
-CORE:PART:GETMODULE("kOSProcessor"):DOEVENT("Open Terminal").
+CORE:DOEVENT("Open Terminal").
 IF NOT SHIP:PARTSTAGGED("control"):EMPTY {
 	LOCAL p IS SHIP:PARTSTAGGED("control")[0].
 	IF p:MODULES:CONTAINS("ModuleCommand"){p:GETMODULE("ModuleCommand"):DOEVENT("Control from here").}
