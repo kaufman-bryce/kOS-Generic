@@ -1,8 +1,6 @@
 declare parameter points.
-//TODO: Replace parameters with an array of waypoints, altitudes, and speeds. list(list(geo,alt,speed,name))
+// Paramer is waypoint lists: list(list(geopos, alt, speed, name))
 //TODO: Setup an action group to automatically deploy science when waypoint reached
-//TODO: Detect if landed; disable roll control and use yaw instead.
-//TODO: Experiment with using chained waypoints to takeoff/land on runway.
 
 LOCAL iter IS points:ITERATOR.
 LOCAL sp IS "        ".
@@ -91,15 +89,16 @@ UNTIL (exit) {
 			//I gets full control range
 			SET SHIP:CONTROL:PITCH TO (vsOut + pOut) * pitchMax + vsPID:iterm * (1 - pitchMax). 
 			IF STATUS = "PRELAUNCH" OR STATUS = "LANDED" {
-				SET SHIP:CONTROL:YAW TO rPID:update(TIME:seconds,bearErr2) * 3.
 				SET SHIP:CONTROL:ROLL TO 0.
+				SET rPID:setpoint TO bearErr. // round(bearErr, 1).
+				SET SHIP:CONTROL:YAW TO -rPID:update(TIME:seconds,bearErr2) * 3.
 				IF speed = 0 {
 					BRAKES ON.
 					IF AIRSPEED < 5 {IF NOT ITER:NEXT {exit ON.}}
 				} ELSE {BRAKES OFF.}
 			} ELSE {
 				SET SHIP:CONTROL:YAW TO 0.
-				SET rPID:setpoint TO round(bearErr2, 1).
+				SET rPID:setpoint TO bearErr2. // round(bearErr2, 1).
 				SET SHIP:CONTROL:ROLL TO rPID:update(TIME:seconds,currentRoll) * rollMax.
 			}
 			SET tPID:setpoint TO speed.
@@ -112,7 +111,7 @@ UNTIL (exit) {
 		}
 		
 		// Print info
-		PRINT text + " at: (" + round(dest:lat, 4) + "," + round(dest:lng, 4) + ")" + sp AT (11, 1).
+		PRINT text + " at: (" + round(dest:lat, 2) + "," + round(dest:lng, 2) + ")" + sp AT (11, 1).
 		PRINT (iter:index + 1) + " of " + points:length + sp AT (9, 2).
 		LOCAL sec IS dist / AIRSPEED.
 		LOCAL mins IS sec / 60.
