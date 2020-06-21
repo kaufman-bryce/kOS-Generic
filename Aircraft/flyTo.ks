@@ -3,6 +3,83 @@ PARAMETER p1 is 0.
 PARAMETER dAlt is 0.
 PARAMETER speed is 0.
 
+local runways is LEXICON(
+	"KSC 09"   , LEXICON(
+		"start"   , latlng(-0.0486, -74.7264),
+		"end"     , latlng(-0.0501, -74.4908),
+		"altitude", 69.01,
+		"glideslope", 5
+	),
+	"Island 09", LEXICON(
+		"start"   , latlng(-1.5173, -71.9654),
+		"end"     , latlng(-1.5159, -71.8524),
+		"altitude", 133.17,
+		"glideslope", 5
+	),
+	"Dessert 18", LEXICON(
+		"start"   , latlng(-6.4482, -144.0381),
+		"end"     , latlng(-6.5993, -144.0405),
+		"altitude", 822,
+		"glideslope", 5
+	),
+	"KSC 27"   , LEXICON(
+		"start"   , latlng(-0.0501, -74.4908),
+		"end"     , latlng(-0.0486, -74.7264),
+		"altitude", 69.01,
+		"glideslope", 5
+	),
+	"Island 27", LEXICON(
+		"start"   , latlng(-1.5159, -71.8524),
+		"end"     , latlng(-1.5173, -71.9654),
+		"altitude", 133.17,
+		"glideslope", 5
+	),
+	"Dessert 36", LEXICON(
+		"start"   , latlng(-6.5993, -144.0405),
+		"end"     , latlng(-6.4482, -144.0381),
+		"altitude", 822,
+		"glideslope", 5
+	)
+).
+
+function planLanding {
+	PARAMETER runway.
+	local route is list().
+	local rwAlt is runways[runway]:altitude.
+	local start is runways[runway]:start:altitudeposition(rwAlt).
+	local end is runways[runway]:end:altitudeposition(rwAlt).
+	local dir is (start - end):normalized.
+	local glideslopeVec is dir * ANGLEAXIS(runways[runway]:glideslope,VCRS(start - body:position, end - body:position)).
+	local bodypos is BODY:POSITION.
+	local r is BODY:radius.
+	route:add(list(
+		BODY:geopositionof(start + dir * 20000),
+		dAlt,
+		speed,
+		"Cruise to " + runway
+	)).
+	route:add(list(
+		BODY:geopositionof(start + glideslopeVec * 10000),
+		((start + glideslopeVec * 10000) - bodypos):mag - r,
+		200,
+		runway + " Appr. 1"
+	)).
+	route:add(list(
+		BODY:geopositionof(start + glideslopeVec * 5000),
+		((start + glideslopeVec * 5000) - bodypos):mag - r,
+		120,
+		runway + " Appr. 2"
+	)).
+	route:add(list(
+		BODY:geopositionof(start + glideslopeVec * 1000),
+		((start + glideslopeVec * 1000) - bodypos):mag - r,
+		90,
+		runway + " Final Appr."
+	)).
+	route:add(list(runways[runway]:start, rwAlt, 70, runway)).
+	route:add(list(runways[runway]:end, rwAlt - 10, 0, "Touchdown")).
+	RETURN route.
+}
 
 if kind = "waypoint" {
 	// SET dest TO WAYPOINT(p1):geoposition.
@@ -14,7 +91,7 @@ if kind = "waypoint" {
 else if kind = "coords" {
 	run planeAutoPilot(list(list(p1, dAlt, speed, "User coords"))).
 }
-else IF kind = "route" {
+else if kind = "route" {
 	SWITCH TO 0.
 	RUNONCEPATH("/lib/routePlanner").
 	SWITCH TO 1.
@@ -30,14 +107,33 @@ else IF kind = "route" {
 else if kind:tolower = "ksc"{
 	//Use parameter options for first leg of journey
 	run planeAutoPilot(list(
-		list(latlng(-0.0486, -74.719), dAlt, speed, "KSC"),
-		list(latlng(-0.0486, -77.5  ), 3000, 300  , "Start"),
-		list(latlng(-0.0486, -77    ), 2000, 200  , "Approach1"),
-		list(latlng(-0.0486, -75.5  ), 1000, 120  , "Approach2"),
-		list(latlng(-0.0486, -75    ), 250 , 90   , "Approach3"),
-		list(latlng(-0.0486, -74.719), 90  , 70   , "Runway"),
-		list(latlng(-0.0494, -74.608), 60  , 0    , "Land")
+		list(latlng(-0.0493, -74.608 ), dAlt, speed, "KSC"),
+		list(latlng(-0.0486, -77.5   ), 3000, 300  , "Start"),
+		list(latlng(-0.0486, -77     ), 2000, 200  , "Approach1"),
+		list(latlng(-0.0486, -75.5   ), 1000, 120  , "Approach2"),
+		list(latlng(-0.0486, -75     ), 250 , 90   , "Approach3"),
+		list(latlng(-0.0486, -74.7264), 90  , 70   , "Runway"),
+		list(latlng(-0.0501, -74.4908), 60  , 0    , "Land")
 	)).
+}
+else if kind:tolower = "island"{
+	//Use parameter options for first leg of journey
+	run planeAutoPilot(list(
+		list(latlng(-1.5230, -71.910 ), dAlt, speed, "Island Airfeild"),
+		list(latlng(-0.0486, -77.5   ), 3000, 300  , "Start"),
+		list(latlng(-0.0486, -77     ), 2000, 200  , "Approach1"),
+		list(latlng(-0.0486, -75.5   ), 1000, 120  , "Approach2"),
+		list(latlng(-0.0486, -75     ), 250 , 90   , "Approach3"),
+		list(latlng(-1.5173, -71.9654), 153 , 70   , "Runway"),
+		list(latlng(-1.5159, -71.8524), 123 , 0    , "Land")
+	)).
+}
+else if kind = "land" {
+	LOCAL route is LIST().
+	if p1 = "nearest" {
+		// TODO: Iterate runways and determine which start point is closest
+	} else set route to planLanding(p1).
+	run planeAutoPilot(route).
 }
 else if kind = "takeoff" {
 	IF STATUS = "LANDED" OR STATUS = "PRELAUNCH" {
@@ -45,8 +141,21 @@ else if kind = "takeoff" {
 		// TODO: Reconfigure to dynamically create waypoints based on current position
 		//     This will permit takeoff from any location.
 		route:INSERT(0, list(latlng(0, -74), 1200, 200, "Initial Climb")).
-		route:INSERT(0, list(latlng(-0.05017, -74.498), 250, 150, "Takeoff")).
+		route:INSERT(0, list(latlng(-0.0501, -74.4908), 250, 150, "Takeoff")).
 		RUN planeAutoPilot(route).
 	}
 }
-// TODO: Add island and desert runways
+else if kind = "test" {
+	LOCAL route is planLanding("KSC 27").
+	set dAlt to 6000.
+	set speed to 300.
+	route:INSERT(0, list(latlng(-1, -73), 5000, 300, "Divert 2")).
+	route:INSERT(0, list(latlng(0, -72), 3500, 300, "Divert 1")).
+	route:INSERT(0, list(latlng(1, -73), 1200, 300, "Initial Climb")).
+	route:INSERT(0, list(latlng(-0.0501, -74.4908), 250, 150, "Takeoff")).
+	run planeAutoPilot(route).
+}
+// TODO: Add island and desert runways, make function to generate landing waypoints automatically.
+// Baikerbanur 0.657222 -146.420556
+// Woomerang 45.29 136.11
+// Dessert Base -6.599444 -144.040556
