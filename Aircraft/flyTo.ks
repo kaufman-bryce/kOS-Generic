@@ -67,16 +67,16 @@ function planLanding {
 	route:add(list(
 		BODY:geopositionof(start + glideslopeVec * 5000),
 		((start + glideslopeVec * 5000) - bodypos):mag - r,
-		120,
+		100,
 		runway + " Appr. 2"
 	)).
 	route:add(list(
 		BODY:geopositionof(start + glideslopeVec * 1000),
 		((start + glideslopeVec * 1000) - bodypos):mag - r,
-		90,
+		70,
 		runway + " Final Appr."
 	)).
-	route:add(list(runways[runway]:start, rwAlt, 70, runway)).
+	route:add(list(runways[runway]:start, rwAlt, 40, runway)).
 	route:add(list(runways[runway]:end, rwAlt - 10, 0, "Touchdown")).
 	RETURN route.
 }
@@ -104,30 +104,6 @@ else if kind = "route" {
 	}
 	RUN planeAutoPilot(route).
 }
-else if kind:tolower = "ksc"{
-	//Use parameter options for first leg of journey
-	run planeAutoPilot(list(
-		list(latlng(-0.0493, -74.608 ), dAlt, speed, "KSC"),
-		list(latlng(-0.0486, -77.5   ), 3000, 300  , "Start"),
-		list(latlng(-0.0486, -77     ), 2000, 200  , "Approach1"),
-		list(latlng(-0.0486, -75.5   ), 1000, 120  , "Approach2"),
-		list(latlng(-0.0486, -75     ), 250 , 90   , "Approach3"),
-		list(latlng(-0.0486, -74.7264), 90  , 70   , "Runway"),
-		list(latlng(-0.0501, -74.4908), 60  , 0    , "Land")
-	)).
-}
-else if kind:tolower = "island"{
-	//Use parameter options for first leg of journey
-	run planeAutoPilot(list(
-		list(latlng(-1.5230, -71.910 ), dAlt, speed, "Island Airfeild"),
-		list(latlng(-0.0486, -77.5   ), 3000, 300  , "Start"),
-		list(latlng(-0.0486, -77     ), 2000, 200  , "Approach1"),
-		list(latlng(-0.0486, -75.5   ), 1000, 120  , "Approach2"),
-		list(latlng(-0.0486, -75     ), 250 , 90   , "Approach3"),
-		list(latlng(-1.5173, -71.9654), 153 , 70   , "Runway"),
-		list(latlng(-1.5159, -71.8524), 123 , 0    , "Land")
-	)).
-}
 else if kind = "land" {
 	LOCAL route is LIST().
 	if p1 = "nearest" {
@@ -146,12 +122,11 @@ else if kind = "takeoff" {
 	}
 }
 else if kind = "test" {
-	LOCAL route is planLanding("KSC 27").
 	set dAlt to 6000.
 	set speed to 300.
-	route:INSERT(0, list(latlng(-1, -73), 5000, 300, "Divert 2")).
-	route:INSERT(0, list(latlng(0, -72), 3500, 300, "Divert 1")).
-	route:INSERT(0, list(latlng(1, -73), 1200, 300, "Initial Climb")).
+	LOCAL route is planLanding("KSC 27").
+	route:INSERT(0, list(latlng(1, -72), 6000, 300, "Divert")).
+	route:INSERT(0, list(latlng(1, -74), 3000, 300, "Initial Climb")).
 	route:INSERT(0, list(latlng(-0.0501, -74.4908), 250, 150, "Takeoff")).
 	run planeAutoPilot(route).
 }
