@@ -49,24 +49,31 @@ function planLanding {
 	local start is runways[runway]:start:altitudeposition(rwAlt).
 	local end is runways[runway]:end:altitudeposition(rwAlt).
 	local dir is (start - end):normalized.
-	local glideslopeVec is dir * ANGLEAXIS(runways[runway]:glideslope,VCRS(start - body:position, end - body:position)).
+	local glideslope is runways[runway]:glideslope.
+	local glideslopeVec is dir * ANGLEAXIS(glideslope, VCRS(start - body:position, end - body:position)).
+	local cruiseVec is dir * ANGLEAXIS(glideslope * 2, VCRS(start - body:position, end - body:position)).
 	local bodypos is BODY:POSITION.
 	local r is BODY:radius.
+	local apprAlt is ((start + glideslopeVec * 15000) - bodypos):mag - r.
+	local cruiseAlt is max(apprAlt, dAlt) - apprAlt.
+	local cruiseMul is 0.
+	if cruiseAlt > 0 {set cruiseMul to cruiseAlt / SIN(glideslope * 2).}
+	
 	route:add(list(
-		BODY:geopositionof(start + dir * 20000),
+		BODY:geopositionof(start + glideslopeVec * 15000 + cruiseVec * cruiseMul),
 		dAlt,
 		speed,
 		"Cruise to " + runway
 	)).
 	route:add(list(
-		BODY:geopositionof(start + glideslopeVec * 10000),
-		((start + glideslopeVec * 10000) - bodypos):mag - r,
+		BODY:geopositionof(start + glideslopeVec * 15000),
+		apprAlt,
 		200,
 		runway + " Appr. 1"
 	)).
 	route:add(list(
-		BODY:geopositionof(start + glideslopeVec * 5000),
-		((start + glideslopeVec * 5000) - bodypos):mag - r,
+		BODY:geopositionof(start + glideslopeVec * 7500),
+		((start + glideslopeVec * 7500) - bodypos):mag - r,
 		100,
 		runway + " Appr. 2"
 	)).
@@ -76,8 +83,8 @@ function planLanding {
 		70,
 		runway + " Final Appr."
 	)).
-	route:add(list(runways[runway]:start, rwAlt, 40, runway)).
-	route:add(list(runways[runway]:end, rwAlt - 10, 0, "Touchdown")).
+	route:add(list(runways[runway]:start, rwAlt - 5, 40, runway)).
+	route:add(list(runways[runway]:end, rwAlt - 5, 0, "Touchdown")).
 	RETURN route.
 }
 
@@ -125,9 +132,9 @@ else if kind = "test" {
 	set dAlt to 6000.
 	set speed to 300.
 	LOCAL route is planLanding("KSC 27").
-	route:INSERT(0, list(latlng(1, -72), 6000, 300, "Divert")).
-	route:INSERT(0, list(latlng(1, -74), 3000, 300, "Initial Climb")).
-	route:INSERT(0, list(latlng(-0.0501, -74.4908), 250, 150, "Takeoff")).
+	// route:INSERT(0, list(latlng(1, -71), 6000, 300, "Divert")).
+	route:INSERT(0, list(latlng(2, -72), 3000, 300, "Initial Climb")).
+	route:INSERT(0, list(latlng(-0.0501, -74.2), 250, 150, "Takeoff")).
 	run planeAutoPilot(route).
 }
 // TODO: Add island and desert runways, make function to generate landing waypoints automatically.
