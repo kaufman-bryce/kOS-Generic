@@ -19,6 +19,7 @@ PRINT "       Bearing:".
 PRINT "      Altitude:".
 PRINT "  Control mult:".
 PRINT "             Q:".
+PRINT "      Sideslip:".
 PRINT "    Delta Time:".
 PRINT "AG 1 to exit.".
 PRINT "AG 2 to toggle autopilot.".
@@ -30,6 +31,7 @@ LOCAL rollAdjust IS 1.
 LOCAL pPID IS PIDLOOP(0, 0, 0.01, -1, 1).
 LOCAL vsPID IS PIDLOOP(0.02, 0.01, 0, -1, 1).
 LOCAL rPID IS PIDLOOP(0.02, 0, 0.01, -1, 1).
+LOCAL yPID IS PIDLOOP(0.02, 0, 0.01, -1, 1).
 LOCAL tPID IS PIDLOOP(0.04, 0.01, 0.3, 0, 1).
 LOCAL exit IS FALSE.
 LOCAL PAUSE IS TRUE.
@@ -58,8 +60,6 @@ UNTIL (exit) {
 		LOCAL currentRoll IS VANG( SHIP:FACING:STARVECTOR, SHIP:UP:VECTOR ) - 90.
 		LOCAL currentPitch IS 90 - VANG(SHIP:UP:VECTOR, SHIP:FACING:FOREVECTOR).
 		
-		//TODO: Go steal Q formula from FAR/NEAR source, and/or nick it's DCA directly.
-		// LOCAL Q IS 0.5*((thisAtmo:SEALEVELPRESSURE + (CONSTANT():E^(-ALTITUDE/thisAtmo:SCALE)))*1.2230948554874)*(AIRSPEED^2).
 		LOCAL Q IS SHIP:Q * constant:ATMtokPa.
 		LOCAL qMul IS 1 - MIN(1, MAX(0, Q - minq) / (maxq - minq)).
 		LOCAL ctrlMul IS 0.9 * qMul + 0.1.
@@ -79,19 +79,15 @@ UNTIL (exit) {
 		LOCAL bearErr2 IS max(-bearmax, min(bearmax, bearErr * rollAdjust)).
 		
 		IF pause = FALSE {
+			PRINT "  ===AUTOPILOT ENGAGED===  " AT (2, 0).
 			IF ALT:RADAR < 100 {GEAR ON.} ELSE {GEAR OFF.}
 			
-			SET vsPID:setpoint TO vsErr.
-			
-			LOCAL vsOut IS vsPID:update(TIME:seconds,VERTICALSPEED).
-			LOCAL pOut IS pPID:update(TIME:seconds,currentPitch).
 
-			//I gets full control range
-			SET SHIP:CONTROL:PITCH TO (vsOut + pOut) * pitchMax + vsPID:iterm * (1 - pitchMax). 
+			// Bearing correction; roll if in air, wheelsteer + yaw on ground
 			IF STATUS = "PRELAUNCH" OR STATUS = "LANDED" {
 				SET SHIP:CONTROL:ROLL TO 0.
-				SET rPID:setpoint TO bearErr. // round(bearErr, 1).
-				SET SHIP:CONTROL:YAW TO -rPID:update(TIME:seconds,bearErr2) * 3.
+				SET rPID:setpoint TO 0. // round(bearErr, 1).
+				SET SHIP:control:wheelsteer TO rPID:update(TIME:seconds,bearErr) /5.
 				IF speed = 0 {
 					BRAKES ON.
 					IF AIRSPEED < 5 {IF NOT ITER:NEXT {exit ON.}}
@@ -101,10 +97,24 @@ UNTIL (exit) {
 				SET rPID:setpoint TO bearErr2. // round(bearErr2, 1).
 				SET SHIP:CONTROL:ROLL TO rPID:update(TIME:seconds,currentRoll) * rollMax.
 			}
+
+			// Pitch output: Controlled by vertical speed but with D term of actual craft pitch
+			SET vsPID:setpoint TO vsErr.
+			LOCAL vsOut IS vsPID:update(TIME:seconds,VERTICALSPEED).
+			LOCAL pOut IS pPID:update(TIME:seconds,currentPitch).
+			SET SHIP:CONTROL:PITCH TO (vsOut + pOut + (ABS(currentRoll) / 90)) * pitchMax + vsPID:iterm * (1 - pitchMax). // I gets full control range
+			PRINT round(vsPID:iterm,4) + sp AT (26, 8). // debug
+			
+			// Sideslip control
+			LOCAL sideslip IS VANG(VXCL(SHIP:facing:upvector, SHIP:velocity:surface), SHIP:facing:starvector) - 90.
+			LOCAL yOut IS yPID:update(TIME:seconds, -sideslip).
+			SET SHIP:CONTROL:YAW TO yOut * rollMax - vsOut * pitchMax * currentRoll / 60.
+
+
+			// Throttle control
 			SET tPID:setpoint TO speed.
 			SET T TO round(tPID:update(TIME:seconds,AIRSPEED), 2).
 			SET ship:control:PILOTMAINTHROTTLE TO T.
-			PRINT "===AUTOPILOT ENGAGED===   " AT (2, 0).
 		} ELSE {
 			PRINT " ! AUTOPILOT DISENGAGED ! " AT (2, 0).
 			SET ship:control:NEUTRALIZE TO TRUE.
