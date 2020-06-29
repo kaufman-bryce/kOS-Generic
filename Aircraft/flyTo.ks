@@ -8,37 +8,37 @@ local runways is LEXICON(
 		"start"   , latlng(-0.0486, -74.7264),
 		"end"     , latlng(-0.0501, -74.4908),
 		"altitude", 69.01,
-		"glideslope", 5
+		"glideslope", 3
 	),
 	"Island 09", LEXICON(
 		"start"   , latlng(-1.5173, -71.9654),
 		"end"     , latlng(-1.5159, -71.8524),
 		"altitude", 133.17,
-		"glideslope", 5
+		"glideslope", 3
 	),
 	"Dessert 18", LEXICON(
 		"start"   , latlng(-6.4482, -144.0381),
 		"end"     , latlng(-6.5993, -144.0405),
 		"altitude", 822,
-		"glideslope", 5
+		"glideslope", 3
 	),
 	"KSC 27"   , LEXICON(
 		"start"   , latlng(-0.0501, -74.4908),
 		"end"     , latlng(-0.0486, -74.7264),
 		"altitude", 69.01,
-		"glideslope", 5
+		"glideslope", 3
 	),
 	"Island 27", LEXICON(
 		"start"   , latlng(-1.5159, -71.8524),
 		"end"     , latlng(-1.5173, -71.9654),
 		"altitude", 133.17,
-		"glideslope", 5
+		"glideslope", 3
 	),
 	"Dessert 36", LEXICON(
 		"start"   , latlng(-6.5993, -144.0405),
 		"end"     , latlng(-6.4482, -144.0381),
 		"altitude", 822,
-		"glideslope", 5
+		"glideslope", 3
 	)
 ).
 
@@ -50,11 +50,14 @@ function planLanding {
 	local end is runways[runway]:end:altitudeposition(rwAlt).
 	local dir is (start - end):normalized.
 	local glideslope is runways[runway]:glideslope.
-	local glideslopeVec is dir * ANGLEAXIS(glideslope, VCRS(start - body:position, end - body:position)).
-	local cruiseVec is dir * ANGLEAXIS(glideslope * 2, VCRS(start - body:position, end - body:position)).
 	local bodypos is BODY:POSITION.
-	local r is BODY:radius.
-	local apprAlt is ((start + glideslopeVec * 15000) - bodypos):mag - r.
+	local glideslopeVec is dir * ANGLEAXIS(glideslope, VCRS(start - bodypos, end - bodypos)).
+	local cruiseVec is dir * ANGLEAXIS(glideslope * 2, VCRS(start - bodypos, end - bodypos)).
+	local function getAlt {
+		PARAMETER inVec.
+		return (inVec - BODY:POSITION):mag - BODY:radius.
+	}
+	local apprAlt is getAlt(start + glideslopeVec * 15000).
 	local cruiseAlt is max(apprAlt, dAlt) - apprAlt.
 	local cruiseMul is 0.
 	if cruiseAlt > 0 {set cruiseMul to cruiseAlt / SIN(glideslope * 2).}
@@ -69,21 +72,24 @@ function planLanding {
 		BODY:geopositionof(start + glideslopeVec * 15000),
 		apprAlt,
 		200,
-		runway + " Appr. 1"
+		runway + " Appr. 1",
+		true
 	)).
 	route:add(list(
 		BODY:geopositionof(start + glideslopeVec * 7500),
-		((start + glideslopeVec * 7500) - bodypos):mag - r,
+		getAlt(start + glideslopeVec * 7500),
 		100,
-		runway + " Appr. 2"
+		runway + " Appr. 2",
+		true
 	)).
 	route:add(list(
 		BODY:geopositionof(start + glideslopeVec * 1000),
-		((start + glideslopeVec * 1000) - bodypos):mag - r,
+		getAlt(start + glideslopeVec * 1000),
 		70,
-		runway + " Final Appr."
+		runway + " Final Appr.", 
+		true
 	)).
-	route:add(list(runways[runway]:start, rwAlt - 5, 40, runway)).
+	route:add(list(runways[runway]:start, rwAlt - 5, 40, runway, true)).
 	route:add(list(runways[runway]:end, rwAlt - 5, 0, "Touchdown")).
 	RETURN route.
 }
