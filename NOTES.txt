@@ -79,6 +79,7 @@ Modifications to ./comSat.ks
 			Fallbacks?
 
 Modifications to ./autolandAt.ks
+	Detect collisions prior to burn start and avoid
 	Increase lateral error correction; add exponent?
 
 Modifications to ./station.ks
